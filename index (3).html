@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carbon Ledger — An honest account of your daily footprint</title>
+<meta name="description" content="Log your daily habits and see exactly what they cost the atmosphere — with a running ledger, a live reading, and the one change that matters most today.">
+<style>
+  :root{
+    --bg: #0E1512;
+    --surface: #161F1B;
+    --surface-2: #1D2820;
+    --text: #ECE8DF;
+    --text-muted: #8B9990;
+    --hairline: #2A352F;
+    --good: #6FBF96;
+    --warn: #E0863A;
+    --ink: #2F6F5E;
+    --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a{ color: inherit; }
+  .wrap{ max-width: 880px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- header ---------- */
+  header{
+    border-bottom: 1px solid var(--hairline);
+    padding: 22px 0;
+  }
+  .header-row{
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .wordmark{
+    font-family: var(--font-mono);
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .wordmark span{ color: var(--good); }
+  .tagline{
+    font-size: 13px; color: var(--text-muted);
+    margin-top: 2px;
+  }
+  nav{ font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+  /* ---------- hero / instrument ---------- */
+  .hero{ padding: 56px 0 40px; border-bottom: 1px solid var(--hairline); }
+  .hero-grid{
+    display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center;
+  }
+  .reading-label{
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+  }
+  .reading-value{
+    font-family: var(--font-mono);
+    font-size: clamp(48px, 8vw, 84px);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color 0.3s ease;
+  }
+  .reading-unit{ font-size: 0.32em; color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+  .reading-sub{ margin-top: 14px; color: var(--text-muted); font-size: 14px; max-width: 46ch; }
+  .reading-sub b{ color: var(--text); font-weight: 600; }
+
+  .dial-box{
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 20px;
+  }
+  .dial-box canvas{ display:block; width:100%; }
+  .dial-caption{
+    display:flex; justify-content: space-between;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+    margin-top: 10px;
+  }
+
+  /* ---------- section headers ---------- */
+  .section{ padding: 48px 0; border-bottom: 1px solid var(--hairline); }
+  .section-head{
+    display:flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 26px;
+  }
+  .section-title{
+    font-size: 20px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  .section-note{ font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+  /* ---------- entry form ---------- */
+  .form-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 20px 28px;
+  }
+  .field{ display:flex; flex-direction: column; gap: 8px; }
+  .field label{
+    font-size: 13px; color: var(--text-muted); display:flex; justify-content: space-between;
+  }
+  .field label .val{ font-family: var(--font-mono); color: var(--text); }
+  input[type=range]{
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 3px; background: var(--hairline); border-radius: 2px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--good); cursor: pointer; border: 2px solid var(--bg);
+  }
+  select, .toggle-row{
+    background: var(--surface); border: 1px solid var(--hairline); color: var(--text);
+    border-radius: 4px; padding: 10px 12px; font-family: var(--font-sans); font-size: 14px;
+  }
+  select{ appearance: none; cursor:pointer; }
+  .toggle-row{ display:flex; gap: 18px; padding: 10px 12px; }
+  .toggle-row label{ display:flex; align-items:center; gap: 8px; font-size: 14px; color: var(--text); cursor:pointer; }
+  .toggle-row input{ accent-color: var(--good); }
+  .full{ grid-column: 1 / -1; }
+
+  .submit-row{ display:flex; align-items:center; gap: 16px; margin-top: 28px; }
+  button.primary{
+    background: var(--good); color: #0E1512; border: none; border-radius: 4px;
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 12px 22px; cursor: pointer; font-weight: 700;
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  button.primary:hover{ background: #80d1a8; transform: translateY(-1px); }
+  button.primary:active{ transform: translateY(0); }
+  .submit-hint{ font-size: 12px; color: var(--text-muted); }
+
+  /* ---------- ledger rows ---------- */
+  .ledger-table{ width: 100%; border-collapse: collapse; }
+  .ledger-table th{
+    text-align:left; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 400;
+    padding: 0 0 10px; border-bottom: 1px solid var(--hairline);
+  }
+  .ledger-table td{
+    padding: 14px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; vertical-align: middle;
+  }
+  .ledger-table tr:last-child td{ border-bottom: none; }
+  .ledger-no{ font-family: var(--font-mono); color: var(--text-muted); font-size: 13px; width: 40px; }
+  .ledger-date{ font-family: var(--font-mono); font-size: 13px; }
+  .ledger-bar-cell{ width: 40%; }
+  .ledger-bar-track{ background: var(--surface-2); border-radius: 2px; height: 6px; overflow:hidden; }
+  .ledger-bar-fill{ height: 100%; border-radius: 2px; }
+  .ledger-total{ font-family: var(--font-mono); text-align: right; }
+  .empty-state{
+    color: var(--text-muted); font-size: 14px; padding: 30px 0; text-align:center;
+    border: 1px dashed var(--hairline); border-radius: 4px;
+  }
+
+  /* ---------- insights ---------- */
+  .insight-card{
+    background: var(--surface); border: 1px solid var(--hairline); border-left: 3px solid var(--good);
+    border-radius: 4px; padding: 22px 24px; margin-bottom: 14px;
+  }
+  .insight-card.warn{ border-left-color: var(--warn); }
+  .insight-tag{
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--good); margin-bottom: 8px; display:block;
+  }
+  .insight-card.warn .insight-tag{ color: var(--warn); }
+  .insight-body{ font-size: 14.5px; color: var(--text); }
+  .insight-body b{ color: var(--good); }
+  .insight-card.warn .insight-body b{ color: var(--warn); }
+
+  .mentor-intro{
+    display:flex; gap:14px; align-items:flex-start;
+    margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px dashed var(--hairline);
+  }
+  .mentor-avatar{
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    background: var(--good); color: #0E1512;
+    font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mentor-name{ font-size: 14px; font-weight: 600; color: var(--text); }
+  .mentor-tag{ font-weight: 400; color: var(--text-muted); font-size: 12.5px; }
+  .mentor-line{ font-size: 13.5px; color: var(--text-muted); margin-top: 3px; max-width: 56ch; }
+
+  /* ---------- Vinni guide ---------- */
+  .vinni{
+    position: fixed; right: 22px; bottom: 22px; z-index: 50;
+    display:flex; align-items:flex-end; gap: 10px;
+    max-width: min(340px, calc(100vw - 44px));
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .vinni.hidden{ opacity: 0; transform: translateY(8px); pointer-events: none; }
+  .vinni-avatar{
+    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+    background: var(--surface-2); border: 1px solid var(--good);
+    display:flex; align-items:center; justify-content:center;
+    animation: vinniFloat 2.6s ease-in-out infinite;
+  }
+  .vinni-avatar svg{ width: 30px; height: 30px; display:block; }
+  @keyframes vinniFloat{
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .vinni-avatar{ animation: none; }
+  }
+  .vinni-bubble{
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 10px; padding: 12px 14px; position: relative;
+  }
+  .vinni-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom: 4px; }
+  .vinni-label{
+    font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--good);
+  }
+  .vinni-close{
+    background:none; border:none; color: var(--text-muted); cursor:pointer;
+    font-size: 14px; line-height: 1; padding: 2px 4px;
+  }
+  .vinni-close:hover{ color: var(--text); }
+  .vinni-msg{ font-size: 13px; color: var(--text); line-height: 1.45; }
+  @media (max-width: 600px){
+    .vinni{ left: 16px; right: 16px; bottom: 16px; max-width: none; }
+  }
+
+  /* ---------- footer ---------- */
+  footer{ padding: 30px 0 60px; }
+  footer .wrap{ display:flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+  .methodology{ font-size: 12px; color: var(--text-muted); max-width: 52ch; }
+  .privacy{ font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+  @media (max-width: 760px){
+    .hero-grid{ grid-template-columns: 1fr; }
+    .form-grid{ grid-template-columns: 1fr; }
+    footer .wrap{ flex-direction: column; }
+    .ledger-bar-cell{ display:none; }
+  }
+
+  :focus-visible{ outline: 2px solid var(--good); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap header-row">
+    <div>
+      <div class="wordmark">Carbon<span>Ledger</span></div>
+      <div class="tagline">An honest account of your daily footprint.</div>
+    </div>
+    <nav>EST. 2026 · INDIA GRID FACTORS</nav>
+  </div>
+</header>
+
+<section class="hero" id="heroSection">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="reading-label">Today's reading</div>
+      <div class="reading-value" id="readingValue">0.0<span class="reading-unit">kg CO₂e</span></div>
+      <div class="reading-sub" id="readingSub">
+        Log today's habits below to take your first reading. A sustainable daily target sits near <b>2.3 kg CO₂e</b> — most first readings land well above it, and that's the point of keeping a ledger.
+      </div>
+    </div>
+    <div class="dial-box">
+      <canvas id="dial" width="320" height="200"></canvas>
+      <div class="dial-caption">
+        <span>0</span><span>TARGET 2.3</span><span>10+ kg</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="entrySection">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-title">New entry</div>
+      <div class="section-note">FACTORS: AVG INDIA GRID, IPCC DIET ESTIMATES</div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="carKm">Car / bike travel today <span class="val" id="carVal">0 km</span></label>
+        <input type="range" id="carKm" min="0" max="100" value="0" step="1" aria-describedby="carVal">
+      </div>
+
+      <div class="field">
+        <label for="transitKm">Bus / metro / train travel today <span class="val" id="transitVal">0 km</span></label>
+        <input type="range" id="transitKm" min="0" max="100" value="0" step="1" aria-describedby="transitVal">
+      </div>
+
+      <div class="field">
+        <label for="elecKwh">Household electricity used today <span class="val" id="elecVal">0 kWh</span></label>
+        <input type="range" id="elecKwh" min="0" max="20" value="4" step="0.5" aria-describedby="elecVal">
+      </div>
+
+      <div class="field">
+        <label for="cooking">Cooking / LPG use today</label>
+        <select id="cooking">
+          <option value="0.3">Light — tea, light meals</option>
+          <option value="0.9" selected>Typical — 2–3 home-cooked meals</option>
+          <option value="1.8">Heavy — full day cooking, multiple people</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="diet">Today's diet</label>
+        <select id="diet">
+          <option value="1.5">Vegan</option>
+          <option value="2.5" selected>Vegetarian</option>
+          <option value="3.6">Mixed (occasional meat)</option>
+          <option value="5.4">Meat-heavy</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="flightKm">Flight travel this month (prorated to today) <span class="val" id="flightVal">0 km</span></label>
+        <input type="range" id="flightKm" min="0" max="4000" value="0" step="50" aria-describedby="flightVal">
+      </div>
+
+      <fieldset class="field full" style="border:none; padding:0; margin:0;">
+        <legend style="font-size:13px; color:var(--text-muted); padding:0; margin-bottom:8px;">Waste habits today</legend>
+        <div class="toggle-row">
+          <label><input type="checkbox" id="recycled"> Segregated / recycled waste</label>
+          <label><input type="checkbox" id="singleUse"> Used single-use plastic</label>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="submit-row">
+      <button class="primary" id="logBtn">Add to ledger</button>
+      <span class="submit-hint">Saved locally in this browser — nothing leaves your device.</span>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="ledgerSection">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-title">Your ledger</div>
+      <div class="section-note" id="ledgerCount">0 ENTRIES</div>
+    </div>
+    <table class="ledger-table" id="ledgerTable" style="display:none;">
+      <thead>
+        <tr><th class="ledger-no">No.</th><th>Date</th><th>Breakdown</th><th style="text-align:right;">Total</th></tr>
+      </thead>
+      <tbody id="ledgerBody"></tbody>
+    </table>
+    <div class="empty-state" id="ledgerEmpty">No entries yet. Your first logged day will open the ledger.</div>
+  </div>
+</section>
+
+<section class="section" id="insightsSection" style="border-bottom:none;">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-title">What to change first</div>
+      <div class="section-note">RANKED BY IMPACT</div>
+    </div>
+    <div class="mentor-intro">
+      <div class="mentor-avatar">VM</div>
+      <div>
+        <div class="mentor-name">Vinutna Manda <span class="mentor-tag">— built &amp; mentors this ledger</span></div>
+        <div class="mentor-line">I track my own footprint here too. Here's what I'd flag about today's entry:</div>
+      </div>
+    </div>
+    <div id="insights">
+      <div class="insight-card">
+        <span class="insight-tag">Waiting on data</span>
+        <div class="insight-body">Log an entry above and this panel will name the single change that would cut your footprint the most today.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="methodology">
+      Estimates use approximate emission factors: car travel 0.21 kg CO₂e/km, public transit 0.09 kg CO₂e/km, India grid electricity 0.82 kg CO₂e/kWh, short-haul flight 0.15 kg CO₂e/km. Figures are illustrative, meant to build awareness and compare relative impact — not a certified carbon audit.
+      <div style="margin-top:10px; color: var(--text-muted);">Built by <a href="https://github.com/vinutnamanda" target="_blank" rel="noopener" style="color: var(--good); text-decoration: underline;">Vinutna Manda</a> for PromptWars 2026.</div>
+    </div>
+    <div class="privacy">NO SERVER · NO TRACKING · DATA STAYS IN-BROWSER</div>
+  </div>
+</footer>
+
+<div class="vinni" id="vinni" role="status" aria-live="polite">
+  <div class="vinni-avatar">
+    <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <line x1="20" y1="3" x2="20" y2="9" stroke="var(--good)" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="20" cy="3" r="2.3" fill="var(--good)"/>
+      <rect x="6" y="9" width="28" height="24" rx="9" fill="var(--surface)" stroke="var(--good)" stroke-width="1.6"/>
+      <circle cx="15.5" cy="21" r="2.5" fill="var(--good)"/>
+      <circle cx="24.5" cy="21" r="2.5" fill="var(--good)"/>
+      <path d="M15 26.5 Q20 29.5 25 26.5" stroke="var(--good)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <line x1="2" y1="21" x2="6" y2="21" stroke="var(--good)" stroke-width="1.6" stroke-linecap="round"/>
+      <line x1="34" y1="21" x2="38" y2="21" stroke="var(--good)" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="vinni-bubble">
+    <div class="vinni-head">
+      <span class="vinni-label">Vinni · your guide</span>
+      <button class="vinni-close" id="vinniClose" aria-label="Dismiss guide">✕</button>
+    </div>
+    <div class="vinni-msg" id="vinniMsg">Hi, I'm Vinni! Scroll down and I'll walk you through this ledger, step by step.</div>
+  </div>
+</div>
+
+<script src="calc.js"></script>
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const STORAGE_KEY = 'carbon_ledger_entries_v1';
+  const { FACTORS, DAILY_TARGET, computeEntry, biggestLever } = window.CarbonCalc;
+
+  const carKm = $('carKm'), transitKm = $('transitKm'), elecKwh = $('elecKwh'),
+        cooking = $('cooking'), diet = $('diet'), flightKm = $('flightKm'),
+        recycled = $('recycled'), singleUse = $('singleUse');
+
+  function liveTotal(){
+    return computeEntry({
+      carKm: carKm.value,
+      transitKm: transitKm.value,
+      elecKwh: elecKwh.value,
+      cookingFactor: cooking.value,
+      dietFactor: diet.value,
+      flightKmMonth: flightKm.value,
+      recycled: recycled.checked,
+      singleUse: singleUse.checked
+    });
+  }
+
+  function updateLabels(){
+    $('carVal').textContent = carKm.value + ' km';
+    $('transitVal').textContent = transitKm.value + ' km';
+    $('elecVal').textContent = elecKwh.value + ' kWh';
+    $('flightVal').textContent = flightKm.value + ' km';
+  }
+
+  function colorForTotal(t){
+    if (t <= DAILY_TARGET) return getComputedStyle(document.documentElement).getPropertyValue('--good').trim();
+    if (t <= 5) return '#D9C46A';
+    return getComputedStyle(document.documentElement).getPropertyValue('--warn').trim();
+  }
+
+  function drawDial(value){
+    const canvas = $('dial');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h);
+
+    const cx = w/2, cy = h - 18, r = w/2 - 24;
+    const startAngle = Math.PI, endAngle = 0;
+
+    // track
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, endAngle, false);
+    ctx.strokeStyle = '#243029';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // target tick at DAILY_TARGET of a 0-10 scale
+    const maxScale = 10;
+    const targetFrac = DAILY_TARGET / maxScale;
+    const targetAngle = Math.PI - targetFrac * Math.PI;
+    const tx1 = cx + Math.cos(targetAngle) * (r - 12);
+    const ty1 = cy - Math.sin(targetAngle) * (r - 12);
+    const tx2 = cx + Math.cos(targetAngle) * (r + 12);
+    const ty2 = cy - Math.sin(targetAngle) * (r + 12);
+    ctx.beginPath();
+    ctx.moveTo(tx1, ty1); ctx.lineTo(tx2, ty2);
+    ctx.strokeStyle = '#8B9990';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // value arc
+    const frac = Math.min(value, maxScale) / maxScale;
+    const valueAngle = Math.PI - frac * Math.PI;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, valueAngle, true);
+    ctx.strokeStyle = colorForTotal(value);
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // needle
+    const nx = cx + Math.cos(valueAngle) * (r - 28);
+    const ny = cy - Math.sin(valueAngle) * (r - 28);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(nx, ny);
+    ctx.strokeStyle = '#ECE8DF';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI*2);
+    ctx.fillStyle = '#ECE8DF';
+    ctx.fill();
+  }
+
+  function refreshReading(){
+    const r = liveTotal();
+    $('readingValue').innerHTML = r.total.toFixed(1) + '<span class="reading-unit">kg CO₂e</span>';
+    $('readingValue').style.color = colorForTotal(r.total);
+    drawDial(r.total);
+  }
+
+  [carKm, transitKm, elecKwh, cooking, diet, flightKm, recycled, singleUse].forEach(el=>{
+    el.addEventListener('input', ()=>{ updateLabels(); refreshReading(); });
+  });
+
+  function loadEntries(){
+    try{
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    }catch(e){ return []; }
+  }
+  function saveEntries(list){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function renderInsights(latest){
+    const lever = biggestLever(latest);
+    const isWarn = latest.total > 2.3;
+    const html = `
+      <div class="insight-card ${isWarn ? 'warn' : ''}">
+        <span class="insight-tag">${isWarn ? 'Highest-impact change' : 'On track'}</span>
+        <div class="insight-body">Today, <b>${lever.label}</b> is the biggest contributor to your footprint. ${lever.advice}</div>
+      </div>
+    `;
+    $('insights').innerHTML = html;
+  }
+
+  function renderLedger(){
+    const entries = loadEntries();
+    $('ledgerCount').textContent = entries.length + (entries.length === 1 ? ' ENTRY' : ' ENTRIES');
+    if (entries.length === 0){
+      $('ledgerTable').style.display = 'none';
+      $('ledgerEmpty').style.display = 'block';
+      return;
+    }
+    $('ledgerTable').style.display = 'table';
+    $('ledgerEmpty').style.display = 'none';
+
+    const maxTotal = Math.max(...entries.map(e=>e.total), 1);
+    const rows = entries.slice().reverse().map((e, idx) => {
+      const n = entries.length - idx;
+      const pct = Math.min(100, (e.total / Math.max(maxTotal, 10)) * 100);
+      const color = colorForTotal(e.total);
+      return `
+        <tr>
+          <td class="ledger-no">${String(n).padStart(2,'0')}</td>
+          <td class="ledger-date">${e.date}</td>
+          <td class="ledger-bar-cell">
+            <div class="ledger-bar-track"><div class="ledger-bar-fill" style="width:${pct}%; background:${color};"></div></div>
+          </td>
+          <td class="ledger-total">${e.total.toFixed(1)} kg</td>
+        </tr>`;
+    }).join('');
+    $('ledgerBody').innerHTML = rows;
+  }
+
+  $('logBtn').addEventListener('click', ()=>{
+    const r = liveTotal();
+    const entries = loadEntries();
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+    entries.push({ date: dateStr, total: r.total, breakdown: r });
+    saveEntries(entries);
+    renderLedger();
+    renderInsights(r);
+    $('readingSub').innerHTML = `Logged for <b>${dateStr}</b>. Add tomorrow's entry to start seeing your trend in the ledger below.`;
+    document.getElementById('ledgerCount').scrollIntoView({behavior:'smooth', block:'center'});
+  });
+
+  // init
+  updateLabels();
+  refreshReading();
+  renderLedger();
+  const existing = loadEntries();
+  if (existing.length){
+    renderInsights(existing[existing.length-1].breakdown);
+  }
+
+  // Vinni guide: swaps its message based on which section is in view
+  (function initVinni(){
+    const vinni = $('vinni');
+    const msg = $('vinniMsg');
+    $('vinniClose').addEventListener('click', () => vinni.classList.add('hidden'));
+
+    const messages = {
+      heroSection: "Hi, I'm Vinni! This gauge shows today's estimated CO2e. Scroll down and log a day to see it react.",
+      entrySection: "Drag the sliders and pick your diet and cooking level for today, then hit \u201cAdd to ledger.\u201d",
+      ledgerSection: "Every day you log shows up here as a dated row. Longer bar means a bigger footprint that day.",
+      insightsSection: "Once you've logged a day, I'll point out the one habit that mattered most \u2014 not a generic list."
+    };
+
+    if (!('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && messages[entry.target.id]){
+          msg.textContent = messages[entry.target.id];
+        }
+      });
+    }, { threshold: 0.45 });
+
+    ['heroSection','entrySection','ledgerSection','insightsSection'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+  })();
+})();
+</script>
+
+</body>
+</html>

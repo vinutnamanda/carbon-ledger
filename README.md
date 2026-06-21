@@ -63,7 +63,7 @@ Just open `index.html` in a browser — there's nothing to install or build. To 
 
 ## Live demo
 
-[Add your deployed GitHub Pages link here]
+[https://vinutnamanda.github.io/carbon-ledger/](https://vinutnamanda.github.io/carbon-ledger/)
 
 ## Author
 

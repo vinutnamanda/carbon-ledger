@@ -1,5 +1,7 @@
 # Carbon Ledger
 
+![Carbon Ledger screenshot — populated ledger, ranked insight, and the Vinni guide](./screenshot.png)
+
 **An honest account of your daily footprint.**
 
 Carbon Ledger is a lightweight web app that helps people understand and reduce their day-to-day environmental impact. Instead of a one-time quiz, it treats your footprint like a ledger: log a day, see exactly what it cost, and get the single change that would matter most — then watch the trend build over time.

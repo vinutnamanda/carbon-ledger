@@ -4,7 +4,7 @@
  * Uses Node's built-in assert module only — no test framework required to install.
  */
 const assert = require('assert');
-const { FACTORS, DAILY_TARGET, computeEntry, biggestLever } = require('./calc.js');
+const { FACTORS, DAILY_TARGET, computeEntry, biggestLever, classifyTotal } = require('./calc.js');
 
 let passed = 0;
 let failed = 0;
@@ -76,6 +76,21 @@ test('biggestLever picks flight when a flight dominates the day', () => {
 test('DAILY_TARGET is exposed for the UI to compare readings against', () => {
   assert.strictEqual(typeof DAILY_TARGET, 'number');
   assert.ok(DAILY_TARGET > 0);
+});
+
+test('classifyTotal returns good at or under the daily target', () => {
+  assert.strictEqual(classifyTotal(DAILY_TARGET), 'good');
+  assert.strictEqual(classifyTotal(1.0), 'good');
+});
+
+test('classifyTotal returns mid between the target and 5kg', () => {
+  assert.strictEqual(classifyTotal(3.5), 'mid');
+  assert.strictEqual(classifyTotal(5), 'mid');
+});
+
+test('classifyTotal returns warn above 5kg', () => {
+  assert.strictEqual(classifyTotal(5.1), 'warn');
+  assert.strictEqual(classifyTotal(20), 'warn');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

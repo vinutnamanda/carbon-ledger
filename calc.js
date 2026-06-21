@@ -81,6 +81,19 @@
     return items.reduce((max, item) => (item.val > max.val ? item : max), items[0]);
   }
 
+  /**
+   * Classifies a total into an impact band, kept as a pure value (not a color),
+   * so presentation (which hex each band maps to) stays entirely in the UI layer
+   * while this logic — the part that actually matters — stays unit-testable.
+   * @param {number} total - kg CO2e for the day
+   * @returns {'good'|'mid'|'warn'}
+   */
+  function classifyTotal(total) {
+    if (total <= DAILY_TARGET) return 'good';
+    if (total <= 5) return 'mid';
+    return 'warn';
+  }
+
   function toNonNegativeNumber(value) {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 0) return 0;
@@ -91,5 +104,5 @@
     return Math.round(n * 10) / 10;
   }
 
-  return { FACTORS, DAILY_TARGET, computeEntry, biggestLever };
+  return { FACTORS, DAILY_TARGET, computeEntry, biggestLever, classifyTotal };
 });

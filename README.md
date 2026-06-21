@@ -45,7 +45,7 @@ Every form control has a programmatically associated `<label for>` (or native la
 
 ## Efficiency
 
-A single static HTML file plus one small JS module — no bundler, no external requests, no render-blocking dependencies. All per-entry calculations are O(1); the ledger view is the only O(n) operation (n = logged days), rendered on demand rather than on every keystroke.
+A single static HTML file plus one small JS module — no bundler, no external requests, no render-blocking dependencies. All per-entry calculations are O(1); the ledger view is the only O(n) operation (n = logged days), rendered on demand rather than on every keystroke. Two specific fixes worth noting: color lookups for the gauge and ledger bars are resolved through a pure `classifyTotal()` function and a static color map rather than `getComputedStyle()`, avoiding a forced style/layout recalculation on every slider drag; and the background uses `background-attachment: scroll` (the default) rather than `fixed`, since `fixed` is a known cause of main-thread repaint on scroll in several browsers.
 
 ## Emission factors used
 
